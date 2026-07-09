@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Classroom Slideshow</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #slides {
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+
+    #mood-bar {
+      width: 100%;
+      height: 12px;
+      background: rgb(255, 255, 0);
+      transition: background-color 2s ease;
+      flex-shrink: 0;
+    }
+
+    #question-mark {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-size: 200px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+
+    #question-mark.active {
+      opacity: 1;
+    }
+
+    #status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      transition: background 0.3s;
+    }
+
+    #status.connected {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+
+  <!--
+    SETUP: Replace the src below with your Google Slides embed URL.
+    In Google Slides: File -> Share -> Publish to web -> Embed -> Copy the src URL from the iframe tag.
+    It will look like: https://docs.google.com/presentation/d/YOUR_ID/embed?start=false&loop=false
+  -->
+  <iframe
+    id="slides"
+    <iframe src="https://docs.google.com/presentation/d/e/2PACX-1vSrtrQcAgQ3LpzhFwaF_FD9QXBm6MIBOS0-A_PoczVgzYj3yv81f94JknE_1_KtZx3cSK0I-9x3uOj2/pubembed?start=true&loop=true&delayms=15000" frameborder="0" width="960" height="569" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+    allowfullscreen>
+  </iframe>
+
+  <div id="mood-bar"></div>
+  <div id="question-mark">❓</div>
+  <div id="status" title="Arduino connection"></div>
+
+  <script>
+    const moodBar      = document.getElementById("mood-bar");
+    const questionMark = document.getElementById("question-mark");
+    const statusDot    = document.getElementById("status");
+
+    // ── Mood colour ──────────────────────────────────────────────
+    // score: -10 (red) → 0 (yellow) → +10 (green)
+    let smoothedScore = 0;
+    let targetScore   = 0;
+
+    function scoreToColor(score) {
+      score = Math.max(-10, Math.min(10, score));
+      let r, g;
+      if (score < 0) {
+        const t = (score + 10) / 10; // 0=red, 1=yellow
+        r = 255;
+        g = Math.round(255 * t);
+      } else {
+        const t = score / 10; // 0=yellow, 1=green
+        r = Math.round(255 * (1 - t));
+        g = 255;
+      }
+      return `rgb(${r}, ${g}, 0)`;
+    }
+
+    // Smooth the score client-side too for extra silkiness
+    setInterval(() => {
+      smoothedScore += (targetScore - smoothedScore) * 0.05;
+      moodBar.style.background = scoreToColor(smoothedScore);
+    }, 100);
+
+    // ── WebSocket to Python bridge ───────────────────────────────
+    function connect() {
+      const ws = new WebSocket("ws://localhost:8765");
+
+      ws.onopen = () => {
+        statusDot.classList.add("connected");
+      };
+
+      ws.onmessage = (e) => {
+        const data = e.data.trim();
+
+        // Expect JSON: {"score": 5.2, "question": true}
+        try {
+          const msg = JSON.parse(data);
+          if (msg.score !== undefined)    targetScore = msg.score;
+          if (msg.question !== undefined) {
+            questionMark.classList.toggle("active", msg.question);
+          }
+        } catch (_) {
+          // Fallback: plain number = score only
+          const val = parseFloat(data);
+          if (!isNaN(val)) targetScore = val;
+        }
+      };
+
+      ws.onclose = () => {
+        statusDot.classList.remove("connected");
+        setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
