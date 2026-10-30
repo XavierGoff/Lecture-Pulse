@@ -81,7 +81,7 @@ Key design decisions were validated with structured user testing (details in `Do
 - [`Docs/Discovery-Report.pdf`](Docs/Discovery-Report.pdf) — research, interviews, insight themes, concept generation and selection
 - [`Docs/Delivery-Report.pdf`](Docs/Delivery-Report.pdf) — concept development, prototyping, electronics, software, user testing, final design
 
-## Team
+## Team involved
 
 Team X-RAAY — Roma Krishna Moorthy, Yusra Ali, Aleisha, Amy, and Xavier Goff (physical pad design, core electronics, power system and phone-slot switch).
 
